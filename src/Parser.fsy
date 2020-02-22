@@ -1,0 +1,157 @@
+%{
+
+open FSharp.Text.Parsing
+open MinCaml.AST
+
+let ToSourceLocation (state: IParseState): SourceLocation =
+    { fileName = (fst state.ResultRange).pos_fname
+      startLine = (fst state.ResultRange).pos_lnum
+      startColumn = (fst state.ResultRange).pos_cnum
+      endLine = (snd state.ResultRange).pos_lnum
+      endColumn = (snd state.ResultRange).pos_cnum }
+
+let loc (state: IParseState) item: TermWithInfo<SourceLocation> =
+    { item = item
+      info = ToSourceLocation state }
+
+let gentmp: string -> Id =
+    let counter = ref 0 in
+    let f s: Id =
+            counter := !counter + 1
+            sprintf "%s.%d" s !counter in
+    f
+
+let addtyp x: Id * Type = (x, Type.Var(ref None))
+
+%}
+
+%start start
+
+%token LPAREN
+%token RPAREN
+%token COMMA
+%token SEMICOLON
+
+%token <bool> BOOL
+%token NOT
+
+%token <int> INT
+%token ADD
+%token SUB
+
+%token <float> FLOAT
+%token ADD_DOT
+%token SUB_DOT
+%token MUL_DOT
+%token DIV_DOT
+
+%token EQ
+%token NE
+%token LE
+%token GE
+%token LT
+%token GT
+
+%token IF
+%token THEN
+%token ELSE
+%token LET
+%token IN
+%token REC
+
+%token ARRAY_CREATE
+%token DOT
+%token ASSIGN
+
+%token <Id> IDENT
+
+%type<TermWithInfo<SourceLocation> > start
+%token EOF
+
+
+%right prec_let
+%right SEMICOLON
+%right prec_if
+%right ASSIGN
+%left COMMA
+%left EQ NE LT GT LE GE
+%left ADD SUB ADD_DOT SUB_DOT
+%left MUL_DOT DIV_DOT
+%right prec_unary_minus
+%left prec_app
+%left DOT
+
+%%
+
+
+start:
+    exp EOF  { $1 }
+
+atomic:
+    atomic_  { loc parseState $1 }
+atomic_:
+    | LPAREN exp_ RPAREN  { $2 }
+    | LPAREN RPAREN  { Lit(Unit) }
+    | BOOL  { Lit(Bool($1)) }
+    | INT  { Lit(Int($1)) }
+    | FLOAT  { Lit(Float($1)) }
+    | IDENT  { Var($1) }
+    | atomic DOT LPAREN exp RPAREN  { Get($1, $4) }
+
+exp:
+    exp_  { loc parseState $1 }
+exp_:
+    | atomic_  { $1 }
+    | NOT exp %prec prec_app  { UnOp(Not, $2) }
+
+    | SUB exp %prec prec_unary_minus
+        { match $2.item with
+          | Lit(Float(f)) -> Lit(Float(- f))
+          | e -> UnOp(Neg, $2) }
+    | exp ADD exp  { BinOp(Add, $1, $3) }
+    | exp SUB exp  { BinOp(Sub, $1, $3) }
+
+    | exp EQ exp  { BinOp(AST.EQ, $1, $3) }
+    | exp NE exp  { UnOp(Not, loc parseState (BinOp(AST.EQ, $1, $3))) }
+    | exp LT exp  { UnOp(Not, loc parseState (BinOp(AST.LE, $3, $1))) }
+    | exp GT exp  { UnOp(Not, loc parseState (BinOp(AST.LE, $1, $3))) }
+    | exp LE exp  { BinOp(AST.LE, $1, $3) }
+    | exp GE exp  { BinOp(AST.LE, $3, $1) }
+
+    | SUB_DOT exp %prec prec_unary_minus  { UnOp(FNeg, $2) }
+    | exp ADD_DOT exp  { BinOp(FAdd, $1, $3) }
+    | exp SUB_DOT exp  { BinOp(FSub, $1, $3) }
+    | exp MUL_DOT exp  { BinOp(FMul, $1, $3) }
+    | exp DIV_DOT exp  { BinOp(FDiv, $1, $3) }
+
+    | IF exp THEN exp ELSE exp %prec prec_if  { If($2, $4, $6) }
+    | LET IDENT EQ exp IN exp %prec prec_let  { Let(addtyp $2, $4, $6) }
+    | LET REC fundef IN exp %prec prec_let  { LetRec($3, $5) }
+    | LET LPAREN pat RPAREN EQ exp IN exp  { LetTuple($3, $6, $8) }
+
+    | exp actual_args %prec prec_app  { App($1, $2) }
+    | exps  { Tuple($1) }
+
+    | ARRAY_CREATE atomic atomic %prec prec_app  { Array($2, $3) }
+    | atomic DOT LPAREN exp RPAREN ASSIGN exp  { Put($1, $4, $7) }
+    | exp SEMICOLON exp  { Let((gentmp "Type.Unit", Type.Unit), $1, $3) }
+
+fundef:
+    | IDENT formal_args EQ exp  { { name = addtyp $1; args = $2; body = $4 } }
+
+formal_args:
+    | IDENT formal_args  { addtyp $1 :: $2 }
+    | IDENT  { [addtyp $1] }
+
+actual_args:
+    | actual_args atomic %prec prec_app  { $1 @ [$2] }
+    | atomic %prec prec_app  { [$1] }
+
+exps:
+    | exps COMMA exp  { $1 @ [$3] }
+    | exp COMMA exp  { [$1; $3] }
+
+pat:
+    | pat COMMA IDENT  { $1 @ [addtyp $3] }
+    | IDENT COMMA IDENT  { [addtyp $1; addtyp $3] }
+

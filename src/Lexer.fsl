@@ -1,0 +1,79 @@
+{
+
+open FSharp.Text.Lexing
+open MinCaml.Parser
+
+let setInitialPos (lexbuf: LexBuffer<_>) filename =
+    lexbuf.EndPos <- { pos_bol = 0
+                       pos_fname = filename
+                       pos_cnum = 0
+                       pos_lnum = 1 }
+
+let lexeme (lexbuf: LexBuffer<_>): string =
+    new System.String(lexbuf.Lexeme)
+
+let newline (lexbuf: LexBuffer<_>) =
+    lexbuf.EndPos <- lexbuf.EndPos.NextLine
+
+}
+
+
+let lower = ['a' - 'z']
+let upper = ['A' - 'Z']
+let digit = ['0' - '9']
+let whitespace = [' ' '\t']
+let newline = ('\n' | '\r' '\n')
+
+rule token = parse
+    | whitespace +  { token lexbuf }
+    | newline  { newline lexbuf; token lexbuf }
+    | "(*"  { comment lexbuf; token lexbuf }
+
+    | "("  { LPAREN }
+    | ")"  { RPAREN }
+    | ','  { COMMA }
+    | ';'  { SEMICOLON }
+
+    | "true"  { BOOL(true) }
+    | "false"  { BOOL(false) }
+    | "not"  { NOT }
+
+    | digit +  { INT(System.Int32.Parse (lexeme lexbuf)) }
+    | '+'  { ADD }
+    | '-'  { SUB }
+
+    | digit + ('.' digit *) ? (['e' 'E'] ['+' '-'] ? digit +) ?  { FLOAT(System.Double.Parse (lexeme lexbuf)) }
+    | "+."  { ADD_DOT }
+    | "-."  { SUB_DOT }
+    | "*."  { MUL_DOT }
+    | "/."  { DIV_DOT }
+
+    | '='  { EQ }
+    | "<>"  { NE }
+    | "<="  { LE }
+    | ">="  { GE }
+    | '<'  { LT }
+    | '>'  { GT }
+
+    | "if"  { IF }
+    | "then"  { THEN }
+    | "else"  { ELSE }
+    | "let"  { LET }
+    | "in"  { IN }
+    | "rec"  { REC }
+
+    | "Array.create"  { ARRAY_CREATE }
+    | '.'  { DOT }
+    | "<-"  { ASSIGN }
+
+    | '_'  { IDENT(gentmp "Type.Unit") }
+    | lower (digit | lower | upper | '_') *  { IDENT(lexeme lexbuf) }
+
+    | _  { failwith ("ParseError" + LexBuffer<_>.LexemeString lexbuf) }
+    | eof  { EOF }
+
+and comment = parse
+    | "*)"  { () }
+    | "(*"  { comment lexbuf; comment lexbuf }
+    | eof  { failwith ("ParseError" + LexBuffer<_>.LexemeString lexbuf + " unterminated comment") }
+    | _  { comment lexbuf }

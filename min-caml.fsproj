@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>min_caml</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src/AST.fs" />
+
+    <PackageReference Include="FsLexYacc" Version="10.0.0" />
+    <FsYacc Include="src/Parser.fsy">
+      <OtherFlags>--module MinCaml.Parser</OtherFlags>
+    </FsYacc>
+    <FsLex Include="src/Lexer.fsl">
+      <OtherFlags>--module MinCaml.Lexer --unicode</OtherFlags>
+    </FsLex>
+    <Compile Include="Parser.fs" />
+    <Compile Include="Lexer.fs" />
+
+    <Compile Include="src/Program.fs" />
+  </ItemGroup>
+
+</Project>
