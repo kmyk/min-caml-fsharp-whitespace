@@ -2,9 +2,11 @@ module MinCaml.Program
 
 open System
 open FSharp.Text.Lexing
+open MinCaml.AST
 open MinCaml.Lexer
 open MinCaml.Parser
 open MinCaml.Typing
+open MinCaml.KNormal
 
 [<EntryPoint>]
 let main argv =
@@ -15,13 +17,22 @@ let main argv =
         try
             Parser.start Lexer.token lexbuf
         with
-        | e when e.Message.Equals "parse error" -> raise (Exception(sprintf "SyntaxError: Unexpected token: \"%s\" Line: %d Column: %d" (LexBuffer<_>.LexemeString lexbuf) (lexbuf.StartPos.Line + 1) (lexbuf.StartPos.Column + 1)))
+        | e when e.Message.Equals "parse error" ->
+            eprintf "SyntaxError: Unexpected token: \"%s\" Line: %d Column: %d" (LexBuffer<_>.LexemeString lexbuf) (lexbuf.StartPos.Line + 1) (lexbuf.StartPos.Column + 1)
+            reraise ()
 
     let typed =
         try
             Typing.toplevel parsed
         with
-        | TypingError(e, t1, t2) -> raise (Exception(sprintf "TypeError: the term \"%A\" has the expected type \"%A\" but actually has the type \"%A\" Line: %d Column: %d" e.item t1 t2 e.info.startLine e.info.startColumn))
-        | UndefinedVariableError(x, loc) -> raise (Exception(sprintf "SyntaxError: Undefined variable: \"%s\" Line: %d Column: %d" x loc.startLine loc.startColumn))
-    printf "%A\n" typed
+        | TypingError(e, t1, t2) -> reraise ()
+        | UndefinedVariableError(x, loc) -> reraise ()
+
+    let knorm =
+        try
+            KNormal.run' typed
+        with
+        | KNormalizationError(_) -> reraise ()
+
+    printf "%A\n" knorm
     0

@@ -1,6 +1,7 @@
 {
 
 open FSharp.Text.Lexing
+open MinCaml.AST
 open MinCaml.Parser
 
 let setInitialPos (lexbuf: LexBuffer<_>) filename =

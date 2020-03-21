@@ -14,13 +14,6 @@ let loc (state: IParseState) item: TermWithInfo<SourceLocation> =
     { item = item
       info = ToSourceLocation state }
 
-let gentmp: string -> Id =
-    let counter = ref 0 in
-    let f s: Id =
-            counter := !counter + 1
-            sprintf "%s.%d" s !counter in
-    f
-
 let addtyp x: Id * Type = (x, Type.Var(ref None))
 
 %}
@@ -134,7 +127,7 @@ exp_:
 
     | ARRAY_CREATE atomic atomic %prec prec_app  { Array($2, $3) }
     | atomic DOT LPAREN exp RPAREN ASSIGN exp  { Put($1, $4, $7) }
-    | exp SEMICOLON exp  { Let((gentmp "Type.Unit", Type.Unit), $1, $3) }
+    | exp SEMICOLON exp  { Let((gentmp "semicolon", Type.Unit), $1, $3) }
 
 fundef:
     | IDENT formal_args EQ exp  { { name = addtyp $1; args = $2; body = $4 } }

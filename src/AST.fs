@@ -13,7 +13,7 @@ type SourceLocation =
       startColumn: int
       endLine: int
       endColumn: int }
-    override this.ToString() = sprintf "%s(%i/%i)" this.fileName this.startLine this.startColumn
+    override this.ToString() = sprintf "%s:line %i:column %i" this.fileName this.startLine this.startColumn
 
 type Id = string
 
@@ -67,3 +67,46 @@ and FunDef<'Info> =
       args : (Id * Type) list
       body : TermWithInfo<'Info> }
 and TermWithInfo<'Info> = With<Term<'Info>, 'Info>
+
+exception UnifyError of Type * Type
+exception TypingError of TermWithInfo<SourceLocation> * Type * Type
+with override this.Message =
+        let e = this.Data0
+        let t1 = this.Data1
+        let t2 = this.Data2
+        sprintf "the term \"%A\" has the expected type \"%A\" but actually has the type \"%A\" at %s" e.item t1 t2 (e.info.ToString())
+exception UndefinedVariableError of Id * SourceLocation
+with override this.Message =
+        let x = this.Data0
+        let loc = this.Data1
+        sprintf "undefined variable \"%s\" at %s" x (loc.ToString())
+exception KNormalizationError of TermWithInfo<SourceLocation>
+with override this.Message =
+        let e = this.Data0
+        sprintf "something wrong \"%A\" at %s" e.item (e.info.ToString())
+
+let gentmp: string -> Id =
+    let counter = ref 0 in
+    let f s: Id =
+            counter := !counter + 1
+            sprintf "%s.%d" s !counter in
+    f
+
+let litType (l: Literal): Type =
+    match l with
+    | Literal.Unit -> Type.Unit
+    | Literal.Bool(_) -> Type.Bool
+    | Literal.Int(_) -> Type.Int
+    | Literal.Float(_) -> Type.Float
+
+let unOpType (op: UnaryOp): Type =
+    match op with
+    | Not -> Type.Bool
+    | Neg -> Type.Int
+    | FNeg -> Type.Float
+
+let binOpRetType (op: BinaryOp): Type =
+    match op with
+    | Add | Sub -> Type.Int
+    | FAdd | FSub | FMul | FDiv -> Type.Float
+    | EQ | LE -> Type.Bool

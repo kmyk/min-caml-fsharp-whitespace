@@ -1,10 +1,6 @@
 module MinCaml.Typing
 open MinCaml.AST
 
-exception UnifyError of Type * Type
-exception TypingError of TermWithInfo<SourceLocation> * Type * Type
-exception UndefinedVariableError of Id * SourceLocation
-
 let gentyp (): Type = Type.Var(ref None)
 
 let rec occur (r: Type option ref) (t: Type): bool =
@@ -31,21 +27,12 @@ let rec unify (t1: Type) (t2: Type): unit =
     | (_, Type.Var({ contents = None } as r2)) when not (occur r2 t1) -> r2 := Some(t1)
     | _ -> raise (UnifyError(t1, t2))
 
-let rec run (env: Map<Id, Type>) (e: TermWithInfo<'info>): Type =
+let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
     try
         match e.item with
-        | Term.Lit(lit) ->
-            match lit with
-            | Literal.Unit -> Type.Unit
-            | Literal.Bool(_) -> Type.Bool
-            | Literal.Int(_) -> Type.Int
-            | Literal.Float(_) -> Type.Float
+        | Term.Lit(lit) -> litType lit
         | Term.UnOp(op, e1) ->
-            let t = 
-                match op with
-                | Not -> Type.Bool
-                | Neg -> Type.Int
-                | FNeg -> Type.Float
+            let t = unOpType op
             unify t (run env e1)
             t
         | Term.BinOp(op, e1, e2) ->
@@ -53,14 +40,17 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<'info>): Type =
             | Add | Sub ->
                 unify Type.Int (run env e1)
                 unify Type.Int (run env e2)
-                Type.Int
             | FAdd | FSub | FMul | FDiv ->
                 unify Type.Float (run env e1)
                 unify Type.Float (run env e2)
-                Type.Float
             | EQ | LE ->
                 unify (run env e1) (run env e2)
-                Type.Bool
+            binOpRetType op
+        | Term.If(e1, e2, e3) ->
+            unify Type.Bool (run env e1)
+            let t1 = run env e1
+            unify t1 (run env e2)
+            t1
         | Term.Let((x, t), e1, e2) ->
             unify t (run env e1)
             run (Map.add x t env) e2
