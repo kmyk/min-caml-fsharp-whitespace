@@ -23,6 +23,6 @@ jobs:
     - name: Test
       run: |
         dotnet test --no-restore --verbosity normal
-        dotnet run < examples/a-plus-b.ml
-        dotnet run < examples/nested-functions.ml
-        dotnet run < examples/nested-functions-with-free-variables.ml
+        for f in examples/*.ml ; do
+            dotnet run < $f || exit 1
+        done
