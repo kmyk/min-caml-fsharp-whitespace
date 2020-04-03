@@ -34,6 +34,7 @@ let main argv =
         with KNormalizationError(_) -> reraise()
 
     let alpha = Alpha.run' knorm
+    let beta = Beta.run' alpha
 
-    printf "%A\n" alpha
+    printf "%A\n" beta
     0

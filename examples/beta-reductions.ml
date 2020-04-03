@@ -1,0 +1,27 @@
+let rec a x = x + x in
+let b = a in
+let c = b in
+let d = c in
+let e = d in
+let f = e in
+let g = f in
+let h = g in
+let i = h in
+let j = i in
+let k = j in
+let l = k in
+let m = l in
+let n = m in
+let o = n in
+let p = o in
+let q = p in
+let r = q in
+let s = r in
+let t = s in
+let u = t in
+let v = u in
+let w = v in
+let x = w in
+let y = x in
+let z = y in
+z 3
