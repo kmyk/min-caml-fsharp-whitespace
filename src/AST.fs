@@ -91,6 +91,12 @@ exception KNormalizationError of TermWithInfo<SourceLocation> with
         let e = this.Data0
         sprintf "something wrong \"%A\" at %s" e.item (e.info.ToString())
 
+exception AlphaConversionError of Map<Id, Id> * Id with
+    override this.Message =
+        let env = this.Data0
+        let x = this.Data0
+        sprintf "something wrong %A %A" env x
+
 let gentmp: string -> Id =
     let counter = ref 0
 
