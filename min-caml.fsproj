@@ -21,6 +21,7 @@
 
     <Compile Include="src/Typing.fs" />
     <Compile Include="src/KNormal.fs" />
+    <Compile Include="src/Alpha.fs" />
 
     <Compile Include="src/Program.fs" />
   </ItemGroup>

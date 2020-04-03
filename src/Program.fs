@@ -33,5 +33,7 @@ let main argv =
             KNormal.run' typed
         with KNormalizationError(_) -> reraise()
 
-    printf "%A\n" knorm
+    let alpha = Alpha.run' knorm
+
+    printf "%A\n" alpha
     0
