@@ -94,7 +94,7 @@ exception KNormalizationError of TermWithInfo<SourceLocation> with
 exception AlphaConversionError of Map<Id, Id> * Id with
     override this.Message =
         let env = this.Data0
-        let x = this.Data0
+        let x = this.Data1
         sprintf "something wrong %A %A" env x
 
 let gentmp: string -> Id =

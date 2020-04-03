@@ -9,12 +9,9 @@ let replace (env: Map<Id, Id>) (x: Id): Id =
     | None -> raise (AlphaConversionError(env, x))
 
 let rename (env: Map<Id, Id>) (x: Id): Map<Id, Id> * Id =
-    match Map.tryFind x env with
-    | Some(_) -> raise (AlphaConversionError(env, x))
-    | None ->
-        let y = gentmp "alpha"
-        let env = Map.add x y env
-        env, y
+    let y = gentmp "alpha"
+    let env = Map.add x y env
+    env, y
 
 
 let rec run (env: Map<Id, Id>) (e: KTerm): KTerm =
