@@ -21,4 +21,8 @@ jobs:
       run: dotnet build --configuration Release --no-restore
 
     - name: Test
-      run: dotnet test --no-restore --verbosity normal
+      run: |
+        dotnet test --no-restore --verbosity normal
+        dotnet run < examples/a-plus-b.ml
+        dotnet run < examples/nested-functions.ml
+        dotnet run < examples/nested-functions-with-free-variables.ml

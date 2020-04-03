@@ -66,20 +66,25 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): KTerm * Type
               body = body }
         (KTerm.LetRec(def, e), t)
     | Term.App(e1, e2s) ->
-        match run env e1 with
-        | (e1, (Type.Fun(us, t) as t1)) ->
-            let rec bind env f us acc e2s: KTerm * Type =
-                match (us, e2s) with
-                | ([], []) -> (KTerm.App(f, acc), t)
-                | (us, []) -> (KTerm.App(f, acc), Type.Fun(us, t))
-                | (u :: us, e2 :: e2s) ->
-                    let (_, t2) as e2' = run env e2
-                    if t2 = u
-                    then insertLet env e2' (fun env x -> bind env f us (acc @ [ x ]) e2s)
-                    else raise (KNormalizationError(e))
-                | _ -> raise (KNormalizationError(e))
-            insertLet env (e1, t1) (fun env f -> bind env f us [] e2s)
-        | _ -> raise (KNormalizationError(e))
+        let (e1, t1) = run env e1
+
+        let (us, t) =
+            match unwrap t1 with
+            | Type.Fun(us, t) -> (us, t)
+            | _ -> raise (KNormalizationError(e))
+
+        let rec bind env f us acc e2s: KTerm * Type =
+            match (us, e2s) with
+            | ([], []) -> (KTerm.App(f, acc), t)
+            | (us, []) -> (KTerm.App(f, acc), Type.Fun(us, t))
+            | (u :: us, e2 :: e2s) ->
+                let (_, t2) as e2' = run env e2
+                if unwrap t2 = unwrap u
+                then insertLet env e2' (fun env x -> bind env f us (acc @ [ x ]) e2s)
+                else raise (KNormalizationError(e))
+            | _ -> raise (KNormalizationError(e))
+
+        insertLet env (e1, t1) (fun env f -> bind env f us [] e2s)
     | Term.Tuple(es) ->
         let rec bind env acc acc' =
             function
