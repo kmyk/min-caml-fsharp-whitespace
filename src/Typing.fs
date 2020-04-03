@@ -1,7 +1,8 @@
 module MinCaml.Typing
+
 open MinCaml.AST
 
-let gentyp (): Type = Type.Var(ref None)
+let gentyp(): Type = Type.Var(ref None)
 
 let rec occur (r: Type option ref) (t: Type): bool =
     match t with
@@ -37,14 +38,18 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
             t
         | Term.BinOp(op, e1, e2) ->
             match op with
-            | Add | Sub ->
+            | Add
+            | Sub ->
                 unify Type.Int (run env e1)
                 unify Type.Int (run env e2)
-            | FAdd | FSub | FMul | FDiv ->
+            | FAdd
+            | FSub
+            | FMul
+            | FDiv ->
                 unify Type.Float (run env e1)
                 unify Type.Float (run env e2)
-            | EQ | LE ->
-                unify (run env e1) (run env e2)
+            | EQ
+            | LE -> unify (run env e1) (run env e2)
             binOpRetType op
         | Term.If(e1, e2, e3) ->
             unify Type.Bool (run env e1)
@@ -64,19 +69,18 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
             unify t (Type.Fun(List.map snd yus, t1))
             run env' e2
         | Term.App(f, es) ->
-            let t = gentyp ()
-            unify (run env f) (Type.Fun (List.map (run env) es, t))
+            let t = gentyp()
+            unify (run env f) (Type.Fun(List.map (run env) es, t))
             t
-        | Term.Tuple(es) ->
-            Type.Tuple(List.map (run env) es)
+        | Term.Tuple(es) -> Type.Tuple(List.map (run env) es)
         | Term.LetTuple(xts, e1, e2) ->
-            unify (Type.Tuple(List.map snd xts)) (run env e1);
+            unify (Type.Tuple(List.map snd xts)) (run env e1)
             run (List.fold (fun env' (x, t) -> Map.add x t env') env xts) e2
         | Term.Array(e1, e2) ->
             unify Type.Int (run env e1)
             Type.Array(run env e2)
         | Term.Get(e1, e2) ->
-            let t = gentyp ()
+            let t = gentyp()
             unify (Type.Array(t)) (run env e1)
             unify Type.Int (run env e2)
             t
@@ -85,13 +89,11 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
             unify (Type.Array(t)) (run env e1)
             unify Type.Int (run env e2)
             Type.Unit
-    with
-    | UnifyError(t1, t2) -> raise (TypingError(e, t1, t2))
+    with UnifyError(t1, t2) -> raise (TypingError(e, t1, t2))
 
 let toplevel e =
     try
         // unify Type.Unit (run Map.empty e)
         unify Type.Int (run Map.empty e)
         e
-    with
-    | UnifyError(t1, t2) -> raise (TypingError(e, t1, t2))
+    with UnifyError(t1, t2) -> raise (TypingError(e, t1, t2))

@@ -62,34 +62,41 @@ type Term<'Info> =
     | Array of TermWithInfo<'Info> * TermWithInfo<'Info>
     | Get of TermWithInfo<'Info> * TermWithInfo<'Info>
     | Put of TermWithInfo<'Info> * TermWithInfo<'Info> * TermWithInfo<'Info>
+
 and FunDef<'Info> =
-    { name : Id * Type
-      args : (Id * Type) list
-      body : TermWithInfo<'Info> }
+    { name: Id * Type
+      args: (Id * Type) list
+      body: TermWithInfo<'Info> }
+
 and TermWithInfo<'Info> = With<Term<'Info>, 'Info>
 
 exception UnifyError of Type * Type
-exception TypingError of TermWithInfo<SourceLocation> * Type * Type
-with override this.Message =
+
+exception TypingError of TermWithInfo<SourceLocation> * Type * Type with
+    override this.Message =
         let e = this.Data0
         let t1 = this.Data1
         let t2 = this.Data2
-        sprintf "the term \"%A\" has the expected type \"%A\" but actually has the type \"%A\" at %s" e.item t1 t2 (e.info.ToString())
-exception UndefinedVariableError of Id * SourceLocation
-with override this.Message =
+        sprintf "the term \"%A\" has the expected type \"%A\" but actually has the type \"%A\" at %s" e.item t1 t2
+            (e.info.ToString())
+
+exception UndefinedVariableError of Id * SourceLocation with
+    override this.Message =
         let x = this.Data0
         let loc = this.Data1
         sprintf "undefined variable \"%s\" at %s" x (loc.ToString())
-exception KNormalizationError of TermWithInfo<SourceLocation>
-with override this.Message =
+
+exception KNormalizationError of TermWithInfo<SourceLocation> with
+    override this.Message =
         let e = this.Data0
         sprintf "something wrong \"%A\" at %s" e.item (e.info.ToString())
 
 let gentmp: string -> Id =
-    let counter = ref 0 in
+    let counter = ref 0
+
     let f s: Id =
-            counter := !counter + 1
-            sprintf "%s.%d" s !counter in
+        counter := !counter + 1
+        sprintf "%s.%d" s !counter
     f
 
 let litType (l: Literal): Type =
@@ -107,6 +114,11 @@ let unOpType (op: UnaryOp): Type =
 
 let binOpRetType (op: BinaryOp): Type =
     match op with
-    | Add | Sub -> Type.Int
-    | FAdd | FSub | FMul | FDiv -> Type.Float
-    | EQ | LE -> Type.Bool
+    | Add
+    | Sub -> Type.Int
+    | FAdd
+    | FSub
+    | FMul
+    | FDiv -> Type.Float
+    | EQ
+    | LE -> Type.Bool
