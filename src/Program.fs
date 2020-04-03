@@ -35,6 +35,7 @@ let main argv =
 
     let alpha = Alpha.run' knorm
     let beta = Beta.run' alpha
+    let assoc = Assoc.run beta
 
-    printf "%A\n" beta
+    printf "%A\n" assoc
     0
