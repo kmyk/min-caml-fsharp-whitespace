@@ -9,7 +9,7 @@ let replace (env: Map<Id, Id>) (x: Id): Id =
     | None -> raise (AlphaConversionError(env, x))
 
 let rename (env: Map<Id, Id>) (x: Id): Map<Id, Id> * Id =
-    let y = gentmp "alpha"
+    let y = gentmp ("alpha/" + x)
     let env = Map.add x y env
     env, y
 

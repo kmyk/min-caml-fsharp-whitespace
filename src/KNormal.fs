@@ -31,6 +31,25 @@ let insertLet (env: Map<Id, Type>) ((e, t): KTerm * Type) (cont: Map<Id, Type> -
         let (e', t') = cont env x
         KTerm.Let((x, t), e, e'), t'
 
+let rec listFreeVars (e: KTerm): Set<Id> =
+    match e with
+    | KTerm.Lit(_) -> Set.empty
+    | KTerm.UnOp(_, x) -> Set.singleton x
+    | KTerm.BinOp(_, x, y) -> Set.ofList [ x; y ]
+    | KTerm.IfNonZero(x, e1, e2) -> Set.add x (Set.union (listFreeVars e1) (listFreeVars e2))
+    | KTerm.Let((x, t), e1, e2) -> Set.remove x (Set.union (listFreeVars e1) (listFreeVars e2))
+    | KTerm.Var(x) -> Set.singleton x
+    | KTerm.LetRec(def, e) ->
+        let a = List.fold (fun vars (x, t) -> Set.remove x vars) (listFreeVars def.body) def.args
+        let b = listFreeVars e
+        Set.remove (fst def.name) (Set.union a b)
+    | KTerm.App(x, ys) -> Set.ofList (x :: ys)
+    | KTerm.Tuple(xs) -> Set.ofList xs
+    | KTerm.LetTuple(xts, y, e1) -> Set.union (Set.ofList (y :: List.map fst xts)) (listFreeVars e1)
+    | KTerm.Array(x, y) -> Set.ofList [ x; y ]
+    | KTerm.Get(x, y) -> Set.ofList [ x; y ]
+    | KTerm.Put(x, y, z) -> Set.ofList [ x; y; z ]
+
 let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): KTerm * Type =
     match e.item with
     | Term.Lit(l) -> (KTerm.Lit(l), litType l)
