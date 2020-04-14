@@ -113,7 +113,7 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): KTerm * Type
                 insertLet env e' (fun env x -> bind env (acc @ [ x ]) (acc' @ [ t ]) es)
         bind env [] [] es
     | Term.LetTuple(def, e1, e2) ->
-        let (e2, t2) = run env e2
+        let (e2, t2) = run (List.fold (fun env (x, t) -> Map.add x t env) env def) e2
         insertLet env (run env e1) (fun env x -> (KTerm.LetTuple(def, x, e2), t2))
     | Term.Array(e1, e2) ->
         let e1' = run env e1
