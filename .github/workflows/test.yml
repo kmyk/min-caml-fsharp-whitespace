@@ -20,9 +20,14 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
+    - name: Setup OCaml
+      run: sudo apt install ocaml
+
     - name: Test
       run: |
         dotnet test --no-restore --verbosity normal
         for f in examples/*.ml ; do
-            dotnet run < $f || exit 1
+            dotnet run < $f > $f.actual
+            ocaml <(echo 'print_int(' ; cat $f ; echo ');print_newline()') > $f.expected
+            diff $f.actual $f.expected || exit 1
         done
