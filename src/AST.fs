@@ -97,6 +97,9 @@ exception AlphaConversionError of Map<Id, Id> * Id with
         let x = this.Data1
         sprintf "something wrong %A %A" env x
 
+exception NoFloatError with
+    override this.Message = "floating point numbers are not supported yet"
+
 let gentmp: string -> Id =
     let counter = ref 0
 

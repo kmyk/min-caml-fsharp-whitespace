@@ -37,6 +37,7 @@ let main argv =
     let beta = Beta.run' alpha
     let assoc = Assoc.run beta
     let (closure, toplevel) = Closure.run assoc
+    let asm = Virtual.run closure toplevel
 
-    printf "%A\n" (closure, toplevel)
+    printf "%A\n" asm
     0
