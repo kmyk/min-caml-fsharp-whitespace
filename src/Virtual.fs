@@ -34,6 +34,13 @@ and VExp =
     | InputChar
     | InputInt
 
+type VFunDef =
+    { name: Id * Type
+      args: (Id * Type) list
+      formalFreeVars: (Id * Type) list
+      body: VTerm }
+
+
 let rec concatLet (xt: Id * Type) (e1: VTerm) (e2: VTerm): VTerm =
     match e1 with
     | Ans(e1) -> Let(xt, e1, e2)
@@ -148,149 +155,15 @@ let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
     | CTerm.Get(x, y) -> failwith "not implemented"
     | CTerm.Put(x, y, z) -> failwith "not implemented"
 
-let run (main: CTerm) (toplevel: CFunDef list): VTerm = go Map.empty main
+let run (main: CTerm) (toplevel: CFunDef list): VTerm * VFunDef list =
+    let main = go Map.empty main
 
-// let fun_eq: Id = gentmp "virtual/eq"
-// let fun_le: Id = gentmp "virtual/le"
-// let fun_fneg: Id = gentmp "virtual/fneg"
-// let fun_fadd: Id = gentmp "virtual/fadd"
-// let fun_fsub: Id = gentmp "virtual/fsub"
-// let fun_fmul: Id = gentmp "virtual/fmul"
-// let fun_fdiv: Id = gentmp "virtual/fdiv"
-// let fun_feq: Id = gentmp "virtual/feq"
-// let fun_fle: Id = gentmp "virtual/fle"
+    let f (def: CFunDef): VFunDef =
+        let env = Map.ofList (def.args @ def.formalFreeVars)
+        { name = def.name
+          args = def.args
+          formalFreeVars = def.formalFreeVars
+          body = go env def.body }
 
-
-// type Asm =
-//     | StackPush of int  // stk -> int :: stk
-//     | StackDup  // a :: stk -> a :: a :: stk
-//     | StackSwap  // a :: b :: stk -> b :: a :: stk
-//     | StackPop  // a :: stk -> stk
-//     | ArithAdd  // int :: int :: stk -> int :: stk
-//     | ArithSub  // int :: int :: stk -> int :: stk
-//     | ArithDiv  // int :: int :: stk -> int :: stk
-//     | ArithMul  // int :: int :: stk -> int :: stk
-//     | ArithMod  // int :: int :: stk -> int :: stk
-//     | HeapWrite  // a :: int :: stk -> stk
-//     | HeapRead  // int :: stk -> a :: stk
-//     | FlowLabel  of Label  // stk -> stk
-//     | FlowCall of Label  // stk -> stk
-//     | FlowJump of Label  // stk -> stk
-//     | FlowJumpIfZero of Label  // int :: stk -> stk
-//     | FlowJumpIfNegative of Label  // int :: stk -> stk
-//     | FlowReturn  // int :: stk -> stk
-//     | FlowExit  // int :: stk -> stk
-//     | IOWriteChar  // char :: stk -> stk
-//     | IOWriteInt  // int :: stk -> stk
-//     | IOReadChar  //stk -> char :: stk
-//     | IOReadInt  // stk -> int :: stk
-
-// let rec go (genlabel: () -> Label) (label: Map<Id, Label>) (env: Map<Id, Type>) (addr: Map<Id, int>) (e: CTerm) (acc: Asm list) : Asm list =
-//     match e with
-//     | CTerm.Lit(l) ->
-//         match l with
-//         | Literal.Unit -> StackPush 0 :: acc
-//         | Literal.Bool(p) -> StackPush (if p then 1 else 0) :: acc
-//         | Literal.Int(n) -> StackPush n :: acc
-//         | Literal.Float(x) -> raise NoFloatError
-//     | CTerm.UnOp(op, x) ->
-//         match op with
-//         | UnaryOp.Not -> ArithSub :: HeapRead :: StackPush (Map.find x addr) :: StackPush 1 :: acc
-//         | UnaryOp.Neg -> ArithSub :: HeapRead :: StackPush (Map.find x addr) :: StackPush 0 :: acc
-//         | UnaryOp.FNeg -> FlowCall (Map.find id_fneg label) :: HeapRead :: StackPush (Map.find x addr) :: acc
-//     | CTerm.BinOp(op, x, y) ->
-//         let acc = HeapRead :: StackPush (Map.find x addr) :: acc
-//         let acc = HeapRead :: StackPush (Map.find y addr) :: acc
-//         match op with
-//         | UnaryOp.Add -> ArithAdd :: acc
-//         | UnaryOp.Sub -> ArithSub :: acc
-//         | UnaryOp.FAdd -> FlowCall (Map.find id_fadd label) :: acc
-//         | UnaryOp.FSub -> FlowCall (Map.find id_fsub label) :: acc
-//         | UnaryOp.FMul -> FlowCall (Map.find id_fmul label) :: acc
-//         | UnaryOp.FDiv -> FlowCall (Map.find id_fdiv label) :: acc
-//         | UnaryOp.EQ ->
-//             match Map.find env x with
-//             | Bool -> ArithSub :: StackSwap :: StackPush 1 :: ArithSub :: acc
-//             | Int -> FlowCall (Map.find id_eq label) :: acc
-//             | Float -> FlowCall (Map.find id_feq label) :: acc
-//             | _ -> failwith "something wrong"
-//         | UnaryOp.LE ->
-//             match Map.find env x with
-//             | Bool ->
-//                 // x <= y iff x = 0 or y = 1 iff 1 - (x * (1 - y))
-//                 ArithSub :: StackSwap :: StackPush 1 :: ArithMul :: ArithSub :: StackSwap :: StackPush 1 :: acc
-//             | Int -> FlowCall (Map.find id_le label) :: acc
-//             | Float -> FlowCall (Map.find id_fle label) :: acc
-//             | _ -> failwith "something wrong"
-//     | CTerm.IfNonZero(x, e1, e2) ->
-//         let label_else = genlabel ()
-//         let label_done = genlabel ()
-//         let acc = FlowJumpIfZero label_else :: HeapRead :: StackPush (Map.find x addr) :: acc
-//         let acc = go genlabel label env addr e1 acc
-//         let acc = FlowLabel label_else :: FlowJump label_done :: acc
-//         let acc = go genlabel label env addr e2 acc
-//         FlowLabel label_done :: acc
-//     | CTerm.Let((x, t), e1, e2) ->
-//         let acc = HeapRead :: StackPush (Map.find x addr) :: acc
-//         let acc = go genlabel label env addr e1 acc
-//     | CTerm.Var(x) ->
-//         HeapRead :: StackPush (Map.find x addr) :: acc
-//     | CTerm.MakeClosure((x, t), closure, e) ->
-//     | CTerm.AppClosure(x, ys) ->
-//     | CTerm.AppDirect(_, ys) ->
-//     | CTerm.Tuple(xs) ->
-//     | CTerm.LetTuple(xts, y, e) ->
-//     | CTerm.Array(x, y) ->
-//         // *heap = value + x;
-//         let acc = HeapRead :: StackPush (Map.find id_heap addr) :: acc
-//         // int value = *heap;
-//         let acc = StackPush (Map.find id_heap addr) :: acc
-//         let acc = HeapRead :: StackPush (Map.find id_heap addr) :: acc
-//         let acc = HeapRead :: StackPush (Map.find x addr) :: acc
-//         let acc = ArithAdd :: acc
-//         let acc = HeapWrite :: acc
-//         // return 2 * value + 3;
-//         ArithAdd :: StackPush 3 :: ArithAdd :: StackDup :: acc
-//     | CTerm.Get(x, y) ->
-//         // return *(x + 2 * y)
-//         let acc = HeapRead :: StackPush (Map.find x addr) :: acc
-//         let acc = HeapRead :: StackPush (Map.find y addr) :: acc
-//         let acc = ArithAdd :: StackDup :: acc
-//         HeapRead :: ArithAdd :: acc
-//     | CTerm.Put(x, y, z) ->
-//         // *(x + 2 * y) = z
-//         let acc = HeapRead :: StackPush (Map.find x addr) :: acc
-//         let acc = HeapRead :: StackPush (Map.find y addr) :: acc
-//         let acc = ArithAdd :: StackDup :: acc
-//         let acc = ArithAdd :: acc
-//         let acc = HeapRead :: StackPush (Map.find z addr) :: acc
-//         HeapWrite :: acc
-
-
-// let run (main: CTerm) (toplevel: CFunDef list): Asm list =
-//     let genlabel =
-//         let counter = ref 0
-//         let f () =
-//             let label = !counter
-//             counter := !counter + 1
-//             label
-//         f
-//     let label = [
-//             (id_eq, genlabel ()),
-//             (id_le, genlabel ()),
-//             (id_fneg, genlabel ()),
-//             (id_fadd, genlabel ()),
-//             (id_fsub, genlabel ()),
-//             (id_fmul, genlabel ()),
-//             (id_fdiv, genlabel ()),
-//             (id_fmod, genlabel ()),
-//             (id_feq, genlabel ()),
-//             (id_fle, genlabel ()),
-//         ] @ List.map (fun def -> (fst def.name, genlabel())) toplevel
-//     let label = Map.ofList label
-//     let addr = Map.ofList [
-//             (id_base, 0),
-//             (id_heap, 1),
-//         ]
-//     let main = List.reverse (FlowExit :: go genlabel label Map.empty addr main [])
-//     return main
+    let toplevel = List.map f toplevel
+    (main, toplevel)
