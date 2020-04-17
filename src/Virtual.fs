@@ -10,29 +10,29 @@ type VTerm =
     | Let of (Id * Type) * VExp * VTerm
 
 and VExp =
-    | Nop
-    | Const of int
-    | Mov of Id
-    | Load of Id
-    | Store of Id * Id
-    | Not of Id
-    | Neg of Id
-    | Add of Id * Id
-    | Sub of Id * Id
-    | FNeg of Id
-    | FAdd of Id * Id
-    | FSub of Id * Id
-    | FMul of Id * Id
-    | FDiv of Id * Id
-    | FMod of Id * Id
-    | IfZero of Id * VTerm * VTerm
-    | IfNegative of Id * VTerm * VTerm
-    | CallClosure of Id * Id list
-    | CallDirect of Id * Id list
-    | OutputChar of Id
-    | OutputInt of Id
-    | InputChar
-    | InputInt
+    | Nop // unit
+    | Const of int // int
+    | Mov of Id // (a ->) a
+    | Load of Id // (int ->) a
+    | Store of Id * Id // (int * a) -> unit
+    | Not of Id // bool
+    | Neg of Id // int
+    | Add of Id * Id // int
+    | Sub of Id * Id // int
+    | FNeg of Id // float
+    | FAdd of Id * Id // float
+    | FSub of Id * Id // float
+    | FMul of Id * Id // float
+    | FDiv of Id * Id // float
+    | FMod of Id * Id // float
+    | IfZero of Id * VTerm * VTerm // a
+    | IfNegative of Id * VTerm * VTerm // a
+    | CallClosure of Id * Id list // a
+    | CallDirect of Id * Id list // a
+    | OutputChar of Id // unit
+    | OutputInt of Id // unit
+    | InputChar // int
+    | InputInt // int
 
 type VFunDef =
     { name: Id * Type
@@ -52,8 +52,12 @@ let insertLet (t: Type) (e: VExp) (cont: Id -> VTerm): VTerm =
 
 let storeAnd (x: Id) (y: Id) (e: VTerm): VTerm = Let((gentmp "unit", Type.Unit), Store(x, y), e)
 
-let var_base: Id = gentmp "virtaul/base"
+// even addresses are for stack
+// odd addresses are for heap
+let var_stack: Id = gentmp "virtaul/base"
 let var_heap: Id = gentmp "virtaul/heap"
+let var_stack_addr: int = 0
+let var_heap_addr: int = 1
 
 let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
     match e with

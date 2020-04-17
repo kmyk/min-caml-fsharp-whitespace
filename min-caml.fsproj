@@ -26,6 +26,8 @@
     <Compile Include="src/Assoc.fs" />
     <Compile Include="src/Closure.fs" />
     <Compile Include="src/Virtual.fs" />
+    <Compile Include="src/Asm.fs" />
+    <Compile Include="src/RegAlloc.fs" />
 
     <Compile Include="src/Program.fs" />
   </ItemGroup>

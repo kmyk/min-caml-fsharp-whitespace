@@ -38,6 +38,7 @@ let main argv =
     let assoc = Assoc.run beta
     let (closure, toplevel) = Closure.run assoc
     let (main, toplevel) = Virtual.run closure toplevel
+    let asm = RegAlloc.run main toplevel
 
-    printf "%A\n" (main, toplevel)
+    printf "%A\n" asm
     0
