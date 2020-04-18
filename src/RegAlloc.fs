@@ -6,7 +6,7 @@ open MinCaml.Asm
 
 let addr (env: Map<Id, int>) (x: Id): Asm list =
     List.rev
-        [ StackPush(Map.find var_stack env)
+        [ StackPush(var_stack_addr)
           HeapRead
           StackPush(2 * (Map.find x env))
           ArithAdd ]
@@ -80,26 +80,22 @@ and go'
         let ops = go env table nextAddr nextLabel e1 ops
         let ops = FlowLabel(label2) :: ops
         ops
-    | CallClosure(x, ys) ->
-        let ops = ArithAdd :: StackPush(2 * nextAddr) :: StackDup :: load var_stack @ ops
-
-        let g (i, ops) y =
-            let ops = ArithAdd :: StackPush(2 * i) :: StackDup :: ops
-            let ops = HeapWrite :: load y @ ops
-            (i + 1, ops)
-
-        let (_, ops) = List.fold g (1, ops) ys
-        let ops = HeapWrite :: ops
-        FlowCall(Map.find x table) :: ops
+    | CallClosure(x, ys)
     | CallDirect(x, ys) ->
-        let ops = ArithAdd :: StackPush(2 * nextAddr) :: StackDup :: load var_stack @ ops
-
         let g (i, ops) y =
-            let ops = ArithAdd :: StackPush(2 * i) :: StackDup :: ops
+            let ops = HeapRead :: StackPush(var_stack_addr) :: ops
+            let ops = ArithAdd :: StackPush(2 * i + 2 * nextAddr) :: ops
             let ops = HeapWrite :: load y @ ops
             (i + 1, ops)
 
         let (_, ops) = List.fold g (1, ops) ys
+        // save current stack top
+        let ops = ArithAdd :: StackPush(2 * nextAddr) :: HeapRead :: StackPush(var_stack_addr) :: ops
+        let ops = HeapRead :: StackPush(var_stack_addr) :: ops
+        let ops = HeapWrite :: ops
+        // update stack top
+        let ops = StackPush(var_stack_addr) :: ops
+        let ops = ArithAdd :: StackPush(2 * nextAddr) :: HeapRead :: StackPush(var_stack_addr) :: ops
         let ops = HeapWrite :: ops
         FlowCall(Map.find x table) :: ops
     | OutputChar(x) -> IOWriteChar :: load x @ ops
@@ -108,23 +104,43 @@ and go'
     | InputInt -> IOReadInt :: ops
 
 let run (main: VTerm) (toplevel: VFunDef list): Asm list =
-    let env =
-        Map.ofList
-            [ (var_stack, var_stack_addr)
-              (var_heap, var_heap_addr) ]
-
     let (_, table) =
         List.foldBack (fun def (i, table) -> (i + 1, Map.add (fst def.name) i table)) toplevel (0, Map.empty)
     let nextLabel = ref (List.length toplevel)
 
     let f (def: VFunDef): Asm list =
+        let env = Map.empty
         let g (i, env) (x, _) = (i + 1, Map.add x i env)
         let (i, env) = List.fold g (1, env) (def.args @ def.formalFreeVars)
         let ops = [ FlowLabel(Map.find (fst def.name) table) ]
+
+        let ops =
+            if "debug" = "debug" then
+                let ops =
+                    IOWriteChar
+                    :: StackPush(int ' ')
+                       :: List.fold (fun ops c -> IOWriteChar :: StackPush(int c) :: ops) ops
+                              (Seq.toList (fst def.name))
+                let ops =
+                    List.fold
+                        (fun ops (x, _) -> IOWriteChar :: StackPush(int ' ') :: IOWriteInt :: load env x @ ops) ops
+                        (def.args @ def.formalFreeVars)
+                let ops = IOWriteChar :: StackPush(int '(') :: ops
+                let ops = IOWriteInt :: HeapRead :: StackPush(var_stack_addr) :: ops
+                let ops = IOWriteChar :: StackPush(int ')') :: ops
+                let ops = IOWriteChar :: StackPush(int '\n') :: ops
+                ops
+            else
+                ops
+
         let ops = go env table i nextLabel def.body ops
-        let ops = HeapWrite :: HeapRead :: StackDup :: load env var_stack @ ops // unwind the stack base
+        // restore previous stack top
+        let ops = StackPush(var_stack_addr) :: ops
+        let ops = HeapRead :: StackPush(var_stack_addr) :: ops
+        let ops = HeapWrite :: ops
         FlowReturn :: ops
 
-    let main = FlowExit :: IOWriteChar :: StackPush 10 :: IOWriteInt :: go env table 1 nextLabel main []
+    let main =
+        FlowExit :: IOWriteChar :: StackPush(int '\n') :: IOWriteInt :: go Map.empty table 1 nextLabel main []
     let toplevel = List.map f toplevel
     List.foldBack List.append (List.map List.rev (main :: toplevel)) []
