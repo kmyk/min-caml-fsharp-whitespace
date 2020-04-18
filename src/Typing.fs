@@ -53,9 +53,9 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
             binOpRetType op
         | Term.If(e1, e2, e3) ->
             unify Type.Bool (run env e1)
-            let t1 = run env e1
-            unify t1 (run env e2)
-            t1
+            let t2 = run env e2
+            unify t2 (run env e3)
+            t2
         | Term.Let((x, t), e1, e2) ->
             unify t (run env e1)
             run (Map.add x t env) e2
