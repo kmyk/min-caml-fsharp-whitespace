@@ -28,70 +28,73 @@ let rec unify (t1: Type) (t2: Type): unit =
     | (_, Type.Var({ contents = None } as r2)) when not (occur r2 t1) -> r2 := Some(t1)
     | _ -> raise (UnifyError(t1, t2))
 
-let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
+let unify' (e: TermWithInfo<SourceLocation>) (t1: Type) (t2: Type): unit =
     try
-        match e.item with
-        | Term.Lit(lit) -> litType lit
-        | Term.UnOp(op, e1) ->
-            let t = unOpType op
-            unify t (run env e1)
-            t
-        | Term.BinOp(op, e1, e2) ->
-            match op with
-            | Add
-            | Sub ->
-                unify Type.Int (run env e1)
-                unify Type.Int (run env e2)
-            | FAdd
-            | FSub
-            | FMul
-            | FDiv ->
-                unify Type.Float (run env e1)
-                unify Type.Float (run env e2)
-            | EQ
-            | LE -> unify (run env e1) (run env e2)
-            binOpRetType op
-        | Term.If(e1, e2, e3) ->
-            unify Type.Bool (run env e1)
-            let t2 = run env e2
-            unify t2 (run env e3)
-            t2
-        | Term.Let((x, t), e1, e2) ->
-            unify t (run env e1)
-            run (Map.add x t env) e2
-        | Term.Var(x) ->
-            match Map.tryFind x env with
-            | None -> raise (UndefinedVariableError(x, e.info))
-            | Some(t) -> t
-        | Term.LetRec({ name = (x, t); args = yus; body = e1 }, e2) ->
-            let env' = Map.add x t env
-            let t1 = run (List.fold (fun env'' (y, u) -> Map.add y u env'') env' yus) e1
-            unify t (Type.Fun(List.map snd yus, t1))
-            run env' e2
-        | Term.App(f, es) ->
-            let t = gentyp()
-            unify (run env f) (Type.Fun(List.map (run env) es, t))
-            t
-        | Term.Tuple(es) -> Type.Tuple(List.map (run env) es)
-        | Term.LetTuple(xts, e1, e2) ->
-            unify (Type.Tuple(List.map snd xts)) (run env e1)
-            run (List.fold (fun env' (x, t) -> Map.add x t env') env xts) e2
-        | Term.Array(e1, e2) ->
-            unify Type.Int (run env e1)
-            Type.Array(run env e2)
-        | Term.Get(e1, e2) ->
-            let t = gentyp()
-            unify (Type.Array(t)) (run env e1)
-            unify Type.Int (run env e2)
-            t
-        | Term.Put(e1, e2, e3) ->
-            let t = run env e3
-            unify (Type.Array(t)) (run env e1)
-            unify Type.Int (run env e2)
-            Type.Unit
+        unify t1 t2
     with UnifyError(t1, t2) ->
         System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(TypingError(e, t1, t2)).Throw()
         failwith ""
+
+let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
+    match e.item with
+    | Term.Lit(lit) -> litType lit
+    | Term.UnOp(op, e1) ->
+        let t = unOpType op
+        unify' e1 t (run env e1)
+        t
+    | Term.BinOp(op, e1, e2) ->
+        match op with
+        | Add
+        | Sub ->
+            unify' e1 Type.Int (run env e1)
+            unify' e2 Type.Int (run env e2)
+        | FAdd
+        | FSub
+        | FMul
+        | FDiv ->
+            unify' e1 Type.Float (run env e1)
+            unify' e2 Type.Float (run env e2)
+        | EQ
+        | LE -> unify' e2 (run env e1) (run env e2)
+        binOpRetType op
+    | Term.If(e1, e2, e3) ->
+        unify' e1 Type.Bool (run env e1)
+        let t2 = run env e2
+        unify' e3 t2 (run env e3)
+        t2
+    | Term.Let((x, t), e1, e2) ->
+        unify' e1 t (run env e1)
+        run (Map.add x t env) e2
+    | Term.Var(x) ->
+        match Map.tryFind x env with
+        | None -> raise (UndefinedVariableError(x, e.info))
+        | Some(t) -> t
+    | Term.LetRec({ name = (x, t); args = yus; body = e1 }, e2) ->
+        let env' = Map.add x t env
+        let t1 = run (List.fold (fun env'' (y, u) -> Map.add y u env'') env' yus) e1
+        unify' { e with item = Term.Var(x) } t (Type.Fun(List.map snd yus, t1))
+        run env' e2
+    | Term.App(f, es) ->
+        let t = gentyp()
+        unify' f (run env f) (Type.Fun(List.map (run env) es, t))
+        t
+    | Term.Tuple(es) -> Type.Tuple(List.map (run env) es)
+    | Term.LetTuple(xts, e1, e2) ->
+        unify' e1 (Type.Tuple(List.map snd xts)) (run env e1)
+        run (List.fold (fun env' (x, t) -> Map.add x t env') env xts) e2
+    | Term.Array(e1, e2) ->
+        unify' e1 Type.Int (run env e1)
+        Type.Array(run env e2)
+    | Term.Get(e1, e2) ->
+        let t = gentyp()
+        unify' e1 (Type.Array(t)) (run env e1)
+        unify' e2 Type.Int (run env e2)
+        t
+    | Term.Put(e1, e2, e3) ->
+        let t = run env e3
+        unify' e1 (Type.Array(t)) (run env e1)
+        unify' e2 Type.Int (run env e2)
+        Type.Unit
 
 let rec unwrap (t: Type): Type =
     match t with
@@ -129,10 +132,5 @@ let rec unwrap' (e: TermWithInfo<'info>): TermWithInfo<'info> =
     { e with item = item }
 
 let toplevel e =
-    try
-        // unify Type.Unit (run Map.empty e)
-        unify Type.Int (run Map.empty e)
-        unwrap' e
-    with UnifyError(t1, t2) ->
-        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(TypingError(e, t1, t2)).Throw()
-        failwith ""
+    unify' e Type.Int (run Map.empty e)
+    unwrap' e
