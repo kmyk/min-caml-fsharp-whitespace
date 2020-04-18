@@ -1,4 +1,4 @@
-let rec a x = x + x in
+let a = 3 in
 let b = a in
 let c = b in
 let d = c in
@@ -24,4 +24,4 @@ let w = v in
 let x = w in
 let y = x in
 let z = y in
-z 3
+3

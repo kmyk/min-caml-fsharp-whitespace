@@ -115,7 +115,8 @@ let run (main: VTerm) (toplevel: VFunDef list): Asm list =
         let ops = [ FlowLabel(Map.find (fst def.name) table) ]
 
         let ops =
-            if "debug" = "debug" then
+            let debug = false
+            if debug then
                 let ops =
                     IOWriteChar
                     :: StackPush(int ' ')
