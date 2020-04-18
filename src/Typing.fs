@@ -102,11 +102,13 @@ let rec unwrap (t: Type): Type =
     | Type.Bool -> t
     | Type.Int -> t
     | Type.Float -> t
-    | Type.Fun(ts, t) -> Type.Fun(List.map unwrap ts, t)
+    | Type.Fun(ts, t) -> Type.Fun(List.map unwrap ts, unwrap t)
     | Type.Tuple(ts) -> Type.Tuple(List.map unwrap ts)
     | Type.Array(t) -> Type.Array(unwrap t)
-    | Type.Var({ contents = Some(t) }) -> unwrap t
-    | Type.Var(_) -> Type.Unit
+    | Type.Var({ contents = t }) ->
+        match t with
+        | Some(t) -> unwrap t
+        | None -> Type.Unit
 
 let rec unwrap' (e: TermWithInfo<'info>): TermWithInfo<'info> =
     let item =
