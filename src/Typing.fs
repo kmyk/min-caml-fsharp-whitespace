@@ -93,11 +93,46 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
         System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(TypingError(e, t1, t2)).Throw()
         failwith ""
 
+let rec unwrap (t: Type): Type =
+    match t with
+    | Type.Unit -> t
+    | Type.Bool -> t
+    | Type.Int -> t
+    | Type.Float -> t
+    | Type.Fun(ts, t) -> Type.Fun(List.map unwrap ts, t)
+    | Type.Tuple(ts) -> Type.Tuple(List.map unwrap ts)
+    | Type.Array(t) -> Type.Array(unwrap t)
+    | Type.Var({ contents = Some(t) }) -> unwrap t
+    | Type.Var(_) -> Type.Unit
+
+let rec unwrap' (e: TermWithInfo<'info>): TermWithInfo<'info> =
+    let item =
+        match e.item with
+        | Term.Lit(_) -> e.item
+        | Term.UnOp(op, e1) -> Term.UnOp(op, unwrap' e1)
+        | Term.BinOp(op, e1, e2) -> Term.BinOp(op, unwrap' e1, unwrap' e2)
+        | Term.If(e1, e2, e3) -> Term.If(unwrap' e1, unwrap' e2, unwrap' e3)
+        | Term.Let((x, t), e1, e2) -> Term.Let((x, unwrap t), unwrap' e1, unwrap' e2)
+        | Term.Var(x) -> Term.Var(x)
+        | Term.LetRec({ name = (x, t); args = yus; body = e1 }, e2) ->
+            Term.LetRec
+                ({ name = (x, unwrap t)
+                   args = List.map (fun (y, u) -> (y, unwrap u)) yus
+                   body = unwrap' e1 }, unwrap' e2)
+        | Term.App(f, es) -> Term.App(unwrap' f, List.map unwrap' es)
+        | Term.Tuple(es) -> Term.Tuple(List.map unwrap' es)
+        | Term.LetTuple(xts, e1, e2) ->
+            Term.LetTuple(List.map (fun (x, t) -> (x, unwrap t)) xts, unwrap' e1, unwrap' e2)
+        | Term.Array(e1, e2) -> Term.Array(unwrap' e1, unwrap' e2)
+        | Term.Get(e1, e2) -> Term.Get(unwrap' e1, unwrap' e2)
+        | Term.Put(e1, e2, e3) -> Term.Put(unwrap' e1, unwrap' e2, unwrap' e3)
+    { e with item = item }
+
 let toplevel e =
     try
         // unify Type.Unit (run Map.empty e)
         unify Type.Int (run Map.empty e)
-        e
+        unwrap' e
     with UnifyError(t1, t2) ->
         System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(TypingError(e, t1, t2)).Throw()
         failwith ""

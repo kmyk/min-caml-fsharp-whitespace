@@ -88,7 +88,7 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): KTerm * Type
         let (e1, t1) = run env e1
 
         let (us, t) =
-            match unwrap t1 with
+            match t1 with
             | Type.Fun(us, t) -> (us, t)
             | _ -> raise (KNormalizationError(e))
 
@@ -98,7 +98,7 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): KTerm * Type
             | (us, []) -> (KTerm.App(f, acc), Type.Fun(us, t))
             | (u :: us, e2 :: e2s) ->
                 let (_, t2) as e2' = run env e2
-                if unwrap t2 = unwrap u
+                if t2 = u
                 then insertLet env e2' (fun env x -> bind env f us (acc @ [ x ]) e2s)
                 else raise (KNormalizationError(e))
             | _ -> raise (KNormalizationError(e))

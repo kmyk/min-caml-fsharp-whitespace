@@ -83,11 +83,11 @@ let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
         | BinaryOp.FDiv -> Ans(FDiv(x, y))
         | BinaryOp.EQ ->
             let delta =
-                if unwrap (Map.find x env) = Type.Float then FSub(x, y) else Sub(x, y)
+                if Map.find x env = Type.Float then FSub(x, y) else Sub(x, y)
             insertLet Type.Int delta (fun x -> Ans(IfZero(x, Ans(Const(1)), Ans(Const(0)))))
         | BinaryOp.LE ->
             let delta =
-                if unwrap (Map.find x env) = Type.Float then FSub(y, x) else Sub(y, x)
+                if Map.find x env = Type.Float then FSub(y, x) else Sub(y, x)
             insertLet Type.Int delta (fun x -> Ans(IfNegative(x, Ans(Const(0)), Ans(Const(1)))))
     | CTerm.IfNonZero(x, e1, e2) -> Ans(IfZero(x, go env e2, go env e1))
     | CTerm.Let((x, t), e1, e2) ->
@@ -95,7 +95,7 @@ let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
         let e2 = go (Map.add x t env) e2
         concatLet (x, t) e1 e2
     | CTerm.Var(x) ->
-        match unwrap (Map.find x env) with
+        match Map.find x env with
         | Type.Unit -> Ans(Nop)
         | _ -> Ans(Mov(x))
     | CTerm.MakeClosure((x, t), closure, e1) ->
@@ -105,7 +105,7 @@ let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
 
         let rec f (offset, store) (y, t) =
             let store =
-                match unwrap t with
+                match t with
                 | Type.Unit -> store
                 | _ ->
                     insertLet Type.Int (Const(2 * offset))
@@ -127,7 +127,7 @@ let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
 
         let f (offset, store) (x, t) =
             let store =
-                match unwrap t with
+                match t with
                 | Type.Unit -> store
                 | _ ->
                     insertLet Type.Int (Const(2 * offset))
@@ -147,7 +147,7 @@ let rec go (env: Map<Id, Type>) (e: CTerm): VTerm =
             match xts with
             | [] -> go env e
             | (x, t) :: xts ->
-                match unwrap t with
+                match t with
                 | Type.Unit -> f env (offset + 1) xts
                 | _ when not (Set.contains x freeVars) -> f env (offset + 1) xts
                 | _ ->

@@ -131,15 +131,3 @@ let binOpRetType (op: BinaryOp): Type =
     | FDiv -> Type.Float
     | EQ
     | LE -> Type.Bool
-
-let rec unwrap (t: Type): Type =
-    match t with
-    | Type.Unit -> t
-    | Type.Bool -> t
-    | Type.Int -> t
-    | Type.Float -> t
-    | Type.Fun(ts, t) -> Type.Fun(List.map unwrap ts, t)
-    | Type.Tuple(ts) -> Type.Tuple(List.map unwrap ts)
-    | Type.Array(t) -> Type.Array(unwrap t)
-    | Type.Var({ contents = Some(t) }) -> unwrap t
-    | Type.Var(_) -> t
