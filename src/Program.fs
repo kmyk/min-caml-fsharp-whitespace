@@ -39,6 +39,8 @@ let main argv =
     let (closure, toplevel) = Closure.run assoc
     let (main, toplevel) = Virtual.run closure toplevel
     let asm = RegAlloc.run main toplevel
+    let code = Emit.run asm
 
-    printf "%A\n" asm
+    eprintf "%A\n" asm
+    printf "%s" code
     0
