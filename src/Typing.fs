@@ -89,11 +89,15 @@ let rec run (env: Map<Id, Type>) (e: TermWithInfo<SourceLocation>): Type =
             unify (Type.Array(t)) (run env e1)
             unify Type.Int (run env e2)
             Type.Unit
-    with UnifyError(t1, t2) -> raise (TypingError(e, t1, t2))
+    with UnifyError(t1, t2) ->
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(TypingError(e, t1, t2)).Throw()
+        failwith ""
 
 let toplevel e =
     try
         // unify Type.Unit (run Map.empty e)
         unify Type.Int (run Map.empty e)
         e
-    with UnifyError(t1, t2) -> raise (TypingError(e, t1, t2))
+    with UnifyError(t1, t2) ->
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(TypingError(e, t1, t2)).Throw()
+        failwith ""
