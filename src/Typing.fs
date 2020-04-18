@@ -9,7 +9,7 @@ let rec occur (r: Type option ref) (t: Type): bool =
     | Type.Fun(xs, y) -> List.exists (occur r) xs || occur r y
     | Type.Tuple(ts) -> List.exists (occur r) ts
     | Type.Array(u) -> occur r u
-    | Type.Var(r') when r' = r -> true
+    | Type.Var(r') when LanguagePrimitives.PhysicalEquality r r' -> true
     | _ -> false
 
 let rec unify (t1: Type) (t2: Type): unit =
@@ -21,7 +21,7 @@ let rec unify (t1: Type) (t2: Type): unit =
     | (Type.Fun(xs1, y1), Type.Fun(xs2, y2)) when xs1.Length = xs2.Length -> List.iter2 unify (y1 :: xs1) (y2 :: xs2)
     | (Type.Tuple(ts1), Type.Tuple(ts2)) when ts1.Length = ts2.Length -> List.iter2 unify ts1 ts2
     | (Type.Array(u1), Type.Array(u2)) -> unify u1 u2
-    | (Type.Var(r1), Type.Var(r2)) when r1 = r2 -> ()
+    | (Type.Var(r1), Type.Var(r2)) when LanguagePrimitives.PhysicalEquality r1 r2 -> ()
     | (Type.Var({ contents = Some(u1) }), _) -> unify u1 t2
     | (_, Type.Var({ contents = Some(u2) })) -> unify t1 u2
     | (Type.Var({ contents = None } as r1), _) when not (occur r1 t2) -> r1 := Some(t2)
