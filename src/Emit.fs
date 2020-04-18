@@ -12,12 +12,12 @@ let convertInt (n: int): string =
     else
         let rec go n acc =
             match n with
-            | 0 -> acc
+            | 0 -> S :: acc
             | n ->
                 go (n / 2)
                     ((if n % 2 = 0 then S else T)
                      :: acc)
-        String.concat "" (Array.ofList (go n []))
+        String.concat "" (Array.ofList (go n [ N ]))
 
 let convert (op: Asm): string =
     let stack = S

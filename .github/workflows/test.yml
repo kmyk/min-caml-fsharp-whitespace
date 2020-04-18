@@ -20,9 +20,10 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
+    - name: Setup OCaml
+      uses: avsm/setup-ocaml@v1.0
+
     - name: Test
       run: |
-        dotnet test --no-restore --verbosity normal
-        for f in examples/*.ml ; do
-            dotnet run < $f || exit 1
-        done
+        # dotnet test --no-restore --verbosity normal
+        bash tests/run.sh

@@ -125,6 +125,6 @@ let run (main: VTerm) (toplevel: VFunDef list): Asm list =
         let ops = HeapWrite :: HeapRead :: StackDup :: load env var_stack @ ops // unwind the stack base
         FlowReturn :: ops
 
-    let main = FlowExit :: go env table 1 nextLabel main []
+    let main = FlowExit :: IOWriteChar :: StackPush 10 :: IOWriteInt :: go env table 1 nextLabel main []
     let toplevel = List.map f toplevel
     List.foldBack List.append (List.map List.rev (main :: toplevel)) []

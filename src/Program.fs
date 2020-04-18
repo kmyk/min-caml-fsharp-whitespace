@@ -41,6 +41,7 @@ let main argv =
     let asm = RegAlloc.run main toplevel
     let code = Emit.run asm
 
-    eprintf "%A\n" asm
+    for op in asm do
+        eprintfn "%A" op
     printf "%s" code
     0
