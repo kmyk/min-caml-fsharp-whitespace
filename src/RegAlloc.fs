@@ -136,7 +136,7 @@ let run (main: VTerm) (toplevel: VFunDef list): Asm list =
         let ops = go env table i nextLabel def.body ops
         // restore previous stack top
         let ops = StackPush(var_stack_addr) :: ops
-        let ops = HeapRead :: StackPush(var_stack_addr) :: ops
+        let ops = HeapRead :: HeapRead :: StackPush(var_stack_addr) :: ops
         let ops = HeapWrite :: ops
         FlowReturn :: ops
 
