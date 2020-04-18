@@ -65,7 +65,7 @@ let rec go (toplevel: CFunDef list ref) (env: Map<Id, Type>) (known: Set<Id>) (e
     | KTerm.LetRec(def, e) ->
         let actualFreeVars =
             toList
-                (List.fold (fun vars (x, t) -> Set.remove x vars) (KNormal.listFreeVars def.body)
+                (List.fold (fun vars (x, t) -> Set.remove x vars) (KNormal.listFreeVars def.body - known)
                      (def.name :: def.args))
         let formalFreeVars = List.map (fun x -> (x, Map.find x env)) actualFreeVars
         let env1 = Map.add (fst def.name) (snd def.name) env
