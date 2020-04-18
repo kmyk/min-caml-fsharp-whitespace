@@ -1,4 +1,7 @@
+let rec mult a b =
+    if a = 0 then 0
+    else mult (a - 1) b in
 let rec fact n =
     if n = 0 then 1
-    else n * fact (n - 1)
-in fact 10
+    else mult n (fact (n - 1)) in
+fact 10
